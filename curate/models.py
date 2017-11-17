@@ -14,7 +14,13 @@
 #
 ################################################################################
 from django.db import models
+# from mongoengine.document import Document
+from django_mongoengine import Document
+from django_mongoengine import fields
+# from mongoengine.fields import StringField, ListField, ReferenceField, DictField
+
 import mgi.rights as RIGHTS
+
 
 class Curate(models.Model):
     # model stuff here
@@ -26,3 +32,12 @@ class Curate(models.Model):
             (RIGHTS.curate_edit_document, RIGHTS.get_description(RIGHTS.curate_edit_document)),
             (RIGHTS.curate_delete_document, RIGHTS.get_description(RIGHTS.curate_delete_document)),
         )
+
+
+class SchemaElement(Document):
+    tag = fields.StringField()
+    value = fields.StringField(default=None, blank=True)
+
+    options = fields.DictField(blank=True)
+
+    children = fields.ListField(fields.ReferenceField('SchemaElement'), blank=True)

@@ -14,6 +14,7 @@
 
 from abc import ABCMeta, abstractmethod
 
+
 class BLOBHoster(object):
     
     __metaclass__ = ABCMeta
@@ -47,5 +48,10 @@ class BLOBHoster(object):
     @abstractmethod    
     def delete(self, handle):
         # deletes data pointed by the handle
+        raise NotImplementedError("This method is not implemented.")
+
+    @abstractmethod
+    def find(self, key, value):
+        # returns a list of files filtered
         raise NotImplementedError("This method is not implemented.")
         

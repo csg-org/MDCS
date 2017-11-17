@@ -15,12 +15,18 @@
 ################################################################################
 
 
-
 # For now:
 # - just provide the URL to the API call that returns the schema
 #
 # Next:
 # - add some version management
 # - get the schema using the ID and use the hash in the API call
-def getSchemaLocation(request, schemaID):
-    return 'http://'+str(request.get_host())+'/rest/types/get-dependency?id=' + str(schemaID)
+import os
+from django.utils.importlib import import_module
+
+settings_file = os.environ.get("DJANGO_SETTINGS_MODULE")
+settings = import_module(settings_file)
+
+
+def getSchemaLocation(schemaID):
+    return str(settings.MDCS_URI)+'/rest/types/get-dependency?id=' + str(schemaID)

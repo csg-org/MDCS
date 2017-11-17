@@ -18,6 +18,7 @@ from rest_framework import serializers
 from rest_framework_mongoengine.serializers import MongoEngineModelSerializer
 from mgi.models import SavedQuery, Template, Type, TemplateVersion, TypeVersion, Instance
 
+
 ################################################################################
 # 
 # Class Name: jsonDataSerializer
@@ -29,7 +30,10 @@ class jsonDataSerializer(serializers.Serializer):
     title = serializers.CharField()
     schema = serializers.CharField()
     content = serializers.CharField()
+    # ispublished = serializers.BooleanField(required=False, default=True)
     _id = serializers.CharField(required=False)
+    schema_title = serializers.CharField(required=False)
+
 
 ################################################################################
 # 
@@ -41,7 +45,8 @@ class jsonDataSerializer(serializers.Serializer):
 class savedQuerySerializer(MongoEngineModelSerializer):
     class Meta:
         model = SavedQuery
-        
+
+
 ################################################################################
 # 
 # Class Name: resSavedQuerySerializer
@@ -55,6 +60,7 @@ class resSavedQuerySerializer(serializers.Serializer):
     query = serializers.CharField()
     displayedQuery = serializers.CharField()
     id = serializers.CharField(required=False)
+
 
 ################################################################################
 # 
@@ -75,10 +81,12 @@ class querySerializer(serializers.Serializer):
 # 
 ################################################################################
 class schemaSerializer(MongoEngineModelSerializer):
+    templateVersion = serializers.CharField(required=False)
+    dependencies = serializers.CharField(required=False)
+
     class Meta:
         model = Template
-        exclude = (['templateVersion','version','hash'])
-
+        exclude = (['version', 'hash'])
 
 
 ################################################################################
@@ -91,10 +99,6 @@ class schemaSerializer(MongoEngineModelSerializer):
 class exporterSerializer(serializers.Serializer):
     id = serializers.CharField()
     name = serializers.CharField()
-    # available_for_all = serializers.CharField()
-    # class Meta:
-    #     model = Exporter
-    #     exclude = ()
 
 
 ################################################################################
@@ -111,6 +115,7 @@ class jsonXSLTSerializer(serializers.Serializer):
     content = serializers.CharField()
     available_for_all = serializers.BooleanField()
 
+
 ################################################################################
 #
 # Class Name: jsonExportSerializer
@@ -121,6 +126,7 @@ class jsonXSLTSerializer(serializers.Serializer):
 class jsonExportSerializer(serializers.Serializer):
     files = serializers.CharField(required=False)
     exporter = serializers.CharField()
+
 
 ################################################################################
 #
@@ -133,6 +139,7 @@ class jsonExportResSerializer(serializers.Serializer):
     title = serializers.CharField()
     content = serializers.CharField()
 
+
 ################################################################################
 #
 # Class Name: exporterSerializer
@@ -144,8 +151,7 @@ class exporterXSLTSerializer(serializers.Serializer):
     id = serializers.CharField()
     name = serializers.CharField()
     filename = serializers.CharField()
-    # content = serializers.CharField()
-    # available_for_all = serializers.CharField()
+
 
 ################################################################################
 # 
@@ -165,9 +171,7 @@ class templateSerializer(serializers.Serializer):
     exporters = exporterSerializer()
     XSLTFiles = exporterXSLTSerializer()
     id = serializers.CharField(required=False)
-    # class Meta:
-    #     model = Template
-    #     exclude = ()
+
 
 ################################################################################
 # 
@@ -180,6 +184,7 @@ class TemplateVersionSerializer(MongoEngineModelSerializer):
     class Meta:
         model = TemplateVersion
 
+
 ################################################################################
 # 
 # Class Name: typeSerializer
@@ -188,9 +193,13 @@ class TemplateVersionSerializer(MongoEngineModelSerializer):
 # 
 ################################################################################
 class typeSerializer(MongoEngineModelSerializer):
+    typeVersion = serializers.CharField(required=False)
+    dependencies = serializers.CharField(required=False)
+
     class Meta:
         model = Type
-        exclude = (['typeVersion','version','hash'])
+        exclude = (['version', 'hash'])
+
 
 ################################################################################
 # 
@@ -202,6 +211,7 @@ class typeSerializer(MongoEngineModelSerializer):
 class TypeVersionSerializer(MongoEngineModelSerializer):
     class Meta:
         model = TypeVersion
+
 
 ################################################################################
 # 
@@ -219,7 +229,8 @@ class resTypeSerializer(serializers.Serializer):
     hash = serializers.CharField()
     dependencies = serializers.CharField()
     id = serializers.CharField(required=False)
-  
+
+
 ################################################################################
 # 
 # Class Name: instanceSerializer
@@ -230,6 +241,7 @@ class resTypeSerializer(serializers.Serializer):
 class instanceSerializer(MongoEngineModelSerializer):
     class Meta:
         model = Instance
+
 
 ################################################################################
 # 
@@ -248,6 +260,7 @@ class newInstanceSerializer(serializers.Serializer):
     client_id = serializers.CharField()
     client_secret = serializers.CharField()
 
+
 ################################################################################
 # 
 # Class Name: resInstanceSerializer
@@ -265,6 +278,7 @@ class resInstanceSerializer(serializers.Serializer):
     expires = serializers.CharField()
     id = serializers.CharField(required=False)
 
+
 ################################################################################
 # 
 # Class Name: UserSerializer
@@ -277,6 +291,7 @@ class UserSerializer(serializers.Serializer):
     first_name = serializers.CharField()
     last_name = serializers.CharField()
     email = serializers.CharField()
+
 
 ################################################################################
 # 
@@ -292,6 +307,7 @@ class insertUserSerializer(serializers.Serializer):
     last_name = serializers.CharField(required=False)
     email = serializers.CharField(required=False)
 
+
 ################################################################################
 # 
 # Class Name: updateUserSerializer
@@ -303,5 +319,3 @@ class updateUserSerializer(serializers.Serializer):
     first_name = serializers.CharField(required=False)
     last_name = serializers.CharField(required=False)
     email = serializers.CharField(required=False)
-
-

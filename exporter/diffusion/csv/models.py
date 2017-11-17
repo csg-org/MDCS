@@ -55,14 +55,16 @@ class CSVExporter(XSLTExporter):
                 if xml != "":
                     #We remove the extension
                     result['title'] = os.path.splitext(result['title'])[0]
+                    title = self.get_title_document(result['title'], xml)
                     try:
                         data = xml.split("\t\t\n")
                         data = filter(None, data)
                         if len(data) == 1:
-                            returnTransformation.append({'title':result['title'], 'content': str(data[0])})
+                            returnTransformation.append({'title': title, 'content': str(data[0])})
                         else:
                             for res in data:
-                                returnTransformation.append({'title':result['title']+"_Table"+str(nb_table), 'content': str(res)})
+                                returnTransformation.append({'title': title + "_Table" + str(nb_table),
+                                                             'content': str(res)})
                                 nb_table += 1
                     except etree.ParseError as e:
                         raise

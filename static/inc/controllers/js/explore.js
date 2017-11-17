@@ -311,6 +311,7 @@ getAsyncResults = function(numInstance)
  * @param numInstance
  */
 get_results_by_instance = function(numInstance){
+    $("#banner_results_wait").show(200);
     $.ajax({
         url : "/explore/get_results_by_instance",
         type : "GET",
@@ -319,7 +320,10 @@ get_results_by_instance = function(numInstance){
         	numInstance: numInstance,
         },
         success: function(data){
+            $("#banner_results_wait").hide(200);
         	$("#results").html(data.results);
+        	if (data.hasResult)
+        	    $("#results_select").show();
         }
     });
 }
@@ -732,9 +736,41 @@ generate_xsd_tree_for_querying_data = function(){
         dataType: "json",
         success: function(data){
             $("#xsdForm").html(data.xsdForm);
+            $(".icon.add").hide();
+            $(".icon.remove").hide();
+            // Save events
+            //$(':checkbox').change(saveElement);
         }
     });
 }
+
+// Save the value of one (default) element in the database
+var saveElement = function(event) {
+    event.preventDefault();
+
+    var $input = $(this);
+    console.log($input);
+    var inputId = $input.parent().attr('class');
+
+    console.log('Saving element ' + inputId + '...');
+
+    $.ajax({
+        'url': '/curate/save_element',
+        'type': 'POST',
+        'dataType': 'json',
+        'data': {
+            'id': inputId,
+            'value': $input.is(':checked')
+        },
+        success: function() {
+            console.log('Element ' + inputId + ' saved');
+        },
+        error: function() {
+            console.error('An error occurred when saving element ' + inputId);
+        }
+    });
+};
+
 
 
 /**
@@ -869,37 +905,22 @@ set_current_criteria = function(currentCriteriaID){
  */
 selectElement = function(elementID)
 {
-	console.log('BEGIN [selectElement]');
-		
-	var elementName = $("#" + elementID).text().trim();
-	select_element(elementID, elementName);
-	
-	console.log('END [selectElement]');
-}
-
-
-/**
- * AJAX call, select an element to insert in the query
- * @param elementID
- * @param elementName
- */
-select_element = function(elementID, elementName){
 	$.ajax({
         url : "/explore/select_element",
         type : "POST",
         dataType: "json",
         data : {
         	elementID: elementID,
-        	elementName: elementName
         },
 		success: function(data){
-            $($("#" + data.criteriaTagID).children()[1]).val(elementName);
+            $($("#" + data.criteriaTagID).children()[1]).val(data.elementName);
             $($("#" + data.criteriaTagID).children()[1]).attr("class","elementInput");
-            updateUserInputs(elementID, data.criteriaID); 
-            $("#dialog-customTree").dialog("close");    
+            updateUserInputs(elementID, data.criteriaID);
+            $("#dialog-customTree").dialog("close");
 	    }
     });
 }
+
 
 /**
  * Select an element from the custom tree, for subelement query
@@ -1081,8 +1102,30 @@ delete_result = function(result_id){
         	result_id: result_id,
         },
 		success: function(data){
-			   $("#" + result_id).remove();
+			   location.reload();
 	    }
+    });
+}
+
+
+/**
+ * Publish a curated document
+ * @param result_id
+ */
+updatePublish = function(result_id){
+	$(function() {
+        $( "#dialog-publish" ).dialog({
+            modal: true,
+            buttons: {
+            	Cancel: function() {
+                    $( this ).dialog( "close" );
+                },
+            	Publish: function() {
+                    $( this ).dialog( "close" );
+                    update_publish(result_id);
+                },
+            }
+        });
     });
 }
 
@@ -1090,7 +1133,7 @@ delete_result = function(result_id){
  * AJAX call, update the publish state and date of a XMLdata
  * @param result_id
  */
-updatePublish = function(result_id){
+update_publish = function(result_id){
 	$.ajax({
         url : "/explore/update_publish",
         type : "GET",
@@ -1099,8 +1142,29 @@ updatePublish = function(result_id){
         	result_id: result_id,
         },
 		success: function(data){
-		    $("#" + result_id).load(document.URL +  " #" + result_id);
+		    location.reload();
 	    }
+    });
+}
+
+/**
+ * Unpublish a curated document
+ * @param result_id
+ */
+updateUnpublish = function(result_id){
+	$(function() {
+        $( "#dialog-unpublish" ).dialog({
+            modal: true,
+            buttons: {
+            	Cancel: function() {
+                    $( this ).dialog( "close" );
+                },
+            	Unpublish: function() {
+                    $( this ).dialog( "close" );
+                    update_unpublish(result_id);
+                },
+            }
+        });
     });
 }
 
@@ -1108,7 +1172,7 @@ updatePublish = function(result_id){
  * AJAX call, update the publish state of a XMLdata
  * @param result_id
  */
-updateUnpublish = function(result_id){
+update_unpublish = function(result_id){
 	$.ajax({
         url : "/explore/update_unpublish",
         type : "GET",
@@ -1119,6 +1183,29 @@ updateUnpublish = function(result_id){
 		success: function(data){
             $("#" + result_id).load(document.URL +  " #" + result_id);
 	    }
+    });
+}
+
+dialog_detail = function(id){
+	$.ajax({
+        url : "/explore/detail_result_keyword?id=" + id,
+        type : "GET",
+        success: function(data){
+        	$("#result_detail").html(data);
+
+        	$(function() {
+                $( "#dialog-detail-result" ).dialog({
+                    modal: true,
+                    height: 430,
+                    width: 700,
+                    buttons: {
+                        Ok: function() {
+                        $( this ).dialog( "close" );
+                        }
+                    }
+                });
+            });
+        }
     });
 }
 
@@ -1186,23 +1273,29 @@ clearExport = function() {
 * Export files
 */
 exportRes = function() {
-
 	console.log('BEGIN [downloadSelectedResults]');
     clearExport();
     var existOne = false;
     // Need to Set input values explicitiy before sending innerHTML for save
     var elems = document.getElementById("results").getElementsByTagName("input")
     var listId = [];
+    var remote_instance_selected = false;
+    var url_list = $("a.url");
     for(var i = 0; i < elems.length; i++) {
     	if(elems[i].checked == true)
     	{
     	    existOne = true;
-    	    listId.push(elems[i].getAttribute("result_id"));
+    	    var result_id = elems[i].getAttribute("result_id");
+    	    listId.push(result_id);
+    	    var url = url_list[i].getAttribute("href");
+    	    if(url.indexOf("remote") >= 0){
+    	        remote_instance_selected = true;
+            }
     	}
     }
 
     if(existOne > 0){
-        displayExportSelectedDialog(listId);
+        displayExportSelectedDialog(listId, remote_instance_selected);
     }
     else
     {
@@ -1217,16 +1310,16 @@ exportRes = function() {
 /**
  * Show a dialog when a result is selected
  */
-displayExportSelectedDialog = function(listId)
+displayExportSelectedDialog = function(listId, remote_instance_selected)
 {
-    exist = load_start_form(listId);
+    exist = load_start_form(listId, remote_instance_selected);
     $(function() {
         $( "#dialog-message" ).dialog({
           modal: true,
           buttons:
               [
                {
-                   text: "Export",
+                   text: "Begin Download",
                    click: function() {
 
                             if(validateExport())
@@ -1242,13 +1335,15 @@ displayExportSelectedDialog = function(listId)
 }
 
 
-load_start_form = function(listId){
+load_start_form = function(listId, remote_instance_selected){
 	$.ajax({
         url : "/explore/start_export",
         type : "GET",
         dataType: "json",
         data : {
             listId : listId,
+            remote_instance_selected: remote_instance_selected,
+            explore_type: $('#explore-type').attr('value')
         },
         success: function(data){
             $("#form_start_errors").html("");
@@ -1282,6 +1377,7 @@ clearSearch = function() {
     $("#results_errors").html('');
     $("#banner_results_errors").hide(200);
     $("#results_infos").html('');
+    $("#results_select").hide();
 }
 
 /**
@@ -1295,7 +1391,7 @@ get_results_keyword = function(numInstance){
 	// send request if no parameter changed during the timeout
     timeout = setTimeout(function(){
         clearSearch();
-        $("#results").html('Please wait...');
+        $("#banner_results_wait").show(200);
         var keyword = $("#id_search_entry").val();
         $.ajax({
             url : "/explore/get_results_by_instance_keyword",
@@ -1307,16 +1403,15 @@ get_results_keyword = function(numInstance){
                 userSchemas: getUserSchemas(),
                 onlySuggestions: false,
             },
-            beforeSend: function( xhr ) {
-                $("#loading").addClass("isloading");
-            },
             success: function(data){
+                $("#banner_results_wait").hide(200)
                 if (data.resultString.length == 0){
                     clearSearch();
                     $("#results_errors").html("<i class='fa fa-info fa-2x'></i>  No results found");
                     $("#banner_results_errors").show(200)
                 }
                 else{
+                    $("#results_select").show();
                     if(data.count > 1)
                         $("#results_infos").html(data.count + " results");
                     else
@@ -1324,9 +1419,6 @@ get_results_keyword = function(numInstance){
 
                     $("#results").html(data.resultString);
                 }
-            },
-            complete: function(){
-                $("#loading").removeClass("isloading");
             }
         });
     }, 1000);
@@ -1409,4 +1501,27 @@ showHide = function(button, id){
     $("#"+id).toggle("slow");
     var color = $(button).css("background-color");
     $("#"+id).css("color", color);
+}
+
+initBanner = function()
+{
+    $("[data-hide]").on("click", function(){
+        $(this).closest("." + $(this).attr("data-hide")).hide(200);
+    });
+}
+
+initSelectAll =function ()
+{
+    $('#select_all').on('click',function(){
+        if(this.checked){
+            $('#results :checkbox').each(function(){
+                this.checked = true;
+            });
+        }else{
+             $('#results :checkbox').each(function(){
+                this.checked = false;
+            });
+        }
+    });
+    $("#results_select").buttonset();
 }

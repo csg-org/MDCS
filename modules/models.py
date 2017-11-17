@@ -2,7 +2,8 @@ import os
 from django.conf import settings
 from django.http import HttpResponse
 import json
-from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
+from curate.models import SchemaElement
 from exceptions import ModuleError
 from abc import ABCMeta, abstractmethod
 from modules.utils import sanitize
@@ -15,6 +16,9 @@ class Module(object):
     def __init__(self, scripts=list(), styles=list()):
         self.scripts = scripts
         self.styles = styles
+
+        # Is the module managing occurences by its own? (False by default)
+        self.is_managing_occurences = False
 
         # Skeleton of the modules
         self.template = os.path.join(settings.SITE_ROOT, 'templates', 'module.html')
@@ -31,6 +35,8 @@ class Module(object):
         if request.method == 'GET':
             if 'resources' in request.GET:
                 return self._get_resources()
+            elif 'managing_occurences' in request.GET:
+                return HttpResponse(json.dumps(self.is_managing_occurences), HTTP_200_OK)
             else:
                 return self._get(request)
         elif request.method == 'POST':
@@ -39,17 +45,30 @@ class Module(object):
             raise ModuleError('Only GET and POST methods can be used to communicate with a module.')
 
     def _get(self, request):
+        module_id = request.GET['module_id']
+        url = request.GET['url'] if 'url' in request.GET else SchemaElement.objects().get(pk=module_id).options['url']
         template_data = {
+            'module_id': module_id,
             'module': '',
             'display': '',
             'result': '',
-            'url': request.GET['url']
+            'url': url
         }
 
         try:
             template_data['module'] = self._get_module(request)
             template_data['display'] = self._get_display(request)
-            template_data['result'] = sanitize(self._get_result(request))
+
+            result = self._get_result(request)
+            template_data['result'] = result
+
+            module_element = SchemaElement.objects.get(pk=request.GET['module_id'])
+            options = module_element.options
+
+            options['data'] = result
+            module_element.update(set__options=options)
+
+            module_element.reload()
         except Exception, e:
             raise ModuleError('Something went wrong during module initialization: ' + e.message)
 
@@ -70,8 +89,28 @@ class Module(object):
         }
 
         try:
+            if 'module_id' not in request.POST:
+                return HttpResponse({'error': 'No "module_id" parameter provided'}, status=HTTP_400_BAD_REQUEST)
+
+            module_element = SchemaElement.objects.get(pk=request.POST['module_id'])
             template_data['display'] = self._post_display(request)
-            template_data['result'] = sanitize(self._post_result(request))
+            options = module_element.options
+
+            # FIXME temporary solution
+            post_result = self._post_result(request)
+
+            if type(post_result) == dict:
+                options['data'] = self._post_result(request)['data']
+                options['attributes'] = self._post_result(request)['attributes']
+            else:
+                options['data'] = post_result
+
+            # TODO Implement this system instead
+            # options['content'] = self._get_content(request)
+            # options['attributes'] = self._get_attributes(request)
+
+            module_element.update(set__options=options)
+            module_element.reload()
         except Exception, e:
             raise ModuleError('Something went wrong during module update: ' + e.message)
 
@@ -103,7 +142,7 @@ class Module(object):
             Outputs:
                 default result value
         """
-        raise NotImplementedError("This method is not implemented.")
+        raise NotImplementedError("_get_module method is not implemented.")
 
     @abstractmethod
     def _get_display(self, request):
@@ -113,7 +152,7 @@ class Module(object):
             Outputs:
                 default result value
         """
-        raise NotImplementedError("This method is not implemented.")
+        raise NotImplementedError("_get_display method is not implemented.")
 
     @abstractmethod
     def _get_result(self, request):
@@ -123,7 +162,7 @@ class Module(object):
             Outputs:
                 default result value
         """
-        raise NotImplementedError("This method is not implemented.")
+        raise NotImplementedError("_get_result method is not implemented.")
 
     @abstractmethod
     def _post_display(self, request):
@@ -133,7 +172,7 @@ class Module(object):
             Outputs:
                 default displayed value
         """
-        raise NotImplementedError("This method is not implemented.")
+        raise NotImplementedError("_post_display method is not implemented.")
 
     @abstractmethod
     def _post_result(self, request):
@@ -143,4 +182,4 @@ class Module(object):
             Outputs:
                 default result value
         """
-        raise NotImplementedError("This method is not implemented.")
+        raise NotImplementedError("_post_result method is not implemented.")

@@ -20,6 +20,8 @@
 from exporter.models import Exporter
 import lxml.etree as etree
 from io import BytesIO
+import os
+
 
 class XSLTExporter(Exporter):
     """
@@ -42,7 +44,7 @@ class XSLTExporter(Exporter):
         """
         self.xslt = xslt
         #Default extension
-        self.extension= "xml"
+        self.extension = "xml"
 
         xsltParsed = etree.parse(BytesIO(xslt.encode('utf-8')))
         #We define the extension
@@ -69,7 +71,11 @@ class XSLTExporter(Exporter):
                         dom = etree.XML(xml.encode('utf-8'))
                         #Transformation
                         newdom = self.transform(dom)
-                        resultsTransform.append({'title':result['title'], 'content': str(newdom)})
+
+                        result['title'] = os.path.splitext(result['title'])[0]
+                        title = self.get_title_document(result['title'], xml)
+
+                        resultsTransform.append({'title': title, 'content': str(newdom)})
                     except etree.ParseError as e:
                         raise
                     except:
@@ -87,7 +93,13 @@ class BasicExporter(Exporter):
         self.extension = ".xml"
 
     def _transform(self, results):
-        return results
+        results_transform = []
+        for result in results:
+            xml = result['content']
+            result['title'] = os.path.splitext(result['title'])[0]
+            title = self.get_title_document(result['title'], xml)
+            results_transform.append({'title': title, 'content': xml})
+        return results_transform
 
 
 

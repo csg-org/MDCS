@@ -46,6 +46,8 @@ class GRAPHExporter(Exporter):
                 if xml != "":
                     #We remove the extension
                     result['title'] = os.path.splitext(result['title'])[0]
+                    title = self.get_title_document(result['title'], xml)
+
                     try:
                         root = etree.XML(xml)
                         tables = root.xpath(".//profile/table")
@@ -71,7 +73,8 @@ class GRAPHExporter(Exporter):
                                 plt.close()
                                 # rewind the data
                                 imgdata.seek(0)
-                                returnTransformation.append({'title':result['title']+"_"+str(id), 'content': imgdata.read()})
+                                returnTransformation.append({'title': title + "_" + str(id),
+                                                             'content': imgdata.read()})
                                 imgdata.close()
                     except etree.ParseError as e:
                         raise

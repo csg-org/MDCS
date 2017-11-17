@@ -12,6 +12,7 @@ TEMPLATES_PATH = os.path.join(RESOURCES_PATH, 'html')
 SCRIPTS_PATH = os.path.join(RESOURCES_PATH, 'js')
 STYLES_PATH = os.path.join(RESOURCES_PATH, 'css')
 
+
 class PositiveIntegerInputModule(InputModule):
     def __init__(self):
         InputModule.__init__(self, label='Enter positive integer', default_value=1)
@@ -154,15 +155,6 @@ class ExampleAutoCompleteModule(AutoCompleteModule):
         return ''
 
     def _post_display(self, request):
-        # available_options = set()
-        # available_options.add('list')
-        # available_options.add('data')
-        #
-        # post_options = set(request.POST)
-        #
-        # if len(available_options.intersection(post_options)) == 0:
-        #     raise ModuleError('No data sent to server.')
-
         if 'list' in request.POST:
             response_list = []
 
@@ -220,7 +212,8 @@ class CountriesModule(OptionsModule, XPathAccessor):
             'UNITED STATES OF AMERICA': 'USA',
         }
                 
-        OptionsModule.__init__(self, options=self.options, label='Select a Country')
+        OptionsModule.__init__(self, options=self.options, label='Select a Country',
+                               scripts=[os.path.join(SCRIPTS_PATH, 'countries.js')])
 
     def _get_module(self, request):
         return OptionsModule.get_module(self, request)
@@ -247,7 +240,13 @@ class CountriesModule(OptionsModule, XPathAccessor):
         
     def set_XpathAccessor(self, request):
         # get the selected value
+        if 'data' not in request.POST:
+            return
+
         value = str(request.POST['data'])
+
+        if value not in self.country_codes.keys():  # FIXME loose test, fix datastrcture
+            return
         
         # get values to return for siblings
         country_code = self.country_codes[value]
@@ -255,7 +254,6 @@ class CountriesModule(OptionsModule, XPathAccessor):
         anthem = self.anthems[value]
         language = self.languages[value]
         flag = self.flags[value]
-        
          
         # get xpath of current node (for dynamic xpath building)
         module_xpath = self.get_xpath()
@@ -264,20 +262,21 @@ class CountriesModule(OptionsModule, XPathAccessor):
         idx = "[" + str(parent_xpath_idx) + "]"
          
         # set nodes with values
-        self.set_xpath_value('/Countries[1]/country' + idx + '/country_code[1]', country_code)
-        self.set_xpath_value('/Countries[1]/country' + idx + '/details[1]/capital[1]', capital)
-        self.set_xpath_value('/Countries[1]/country' + idx + '/details[1]/anthem[1]', anthem)
-        self.set_xpath_value('/Countries[1]/country' + idx + '/details[1]/language[1]', language)
-        self.set_xpath_value('/Countries[1]/country' + idx + '/details[1]/flag[1]', {'data': flag})
+        form_id = request.session['form_id']
+
+        self.set_xpath_value(form_id, '/Countries[1]/country' + idx + '/country_code', country_code)
+        self.set_xpath_value(form_id, '/Countries[1]/country' + idx + '/details[1]/capital', capital)
+        self.set_xpath_value(form_id, '/Countries[1]/country' + idx + '/details[1]/anthem', anthem)
+        self.set_xpath_value(form_id, '/Countries[1]/country' + idx + '/details[1]/language', language)
+        self.set_xpath_value(form_id, '/Countries[1]/country' + idx + '/details[1]/flag', {'data': flag})
 
 
 class FlagModule(Module):
     
     images = {
-             'None':'',
-             'The Stars and Stripes': "<img src='https://upload.wikimedia.org/wikipedia/en/a/a4/Flag_of_the_United_States.svg' height='42' width='42'/>",
-             'Tricolour': "<img src='https://upload.wikimedia.org/wikipedia/commons/c/c3/Flag_of_France.svg' height='42' width='42'/>"
-             }
+        'The Stars and Stripes': "<img src='https://upload.wikimedia.org/wikipedia/en/a/a4/Flag_of_the_United_States.svg' height='42' width='42'/>",
+        'Tricolour': "<img src='https://upload.wikimedia.org/wikipedia/commons/c/c3/Flag_of_France.svg' height='42' width='42'/>"
+    }
     
     def __init__(self):                
         Module.__init__(self)
@@ -287,7 +286,11 @@ class FlagModule(Module):
 
     def _get_display(self, request):
         if 'data' in request.GET:
-            return self.images[str(request.GET['data'])]
+            image_id = str(request.GET['data'])
+
+            if image_id in self.images.keys():
+                return self.images[image_id]
+
         return ''
 
     def _get_result(self, request):
@@ -296,7 +299,13 @@ class FlagModule(Module):
         return ''
 
     def _post_display(self, request):
-        return self.images[str(request.POST['data'])]
+        if 'data' in request.POST:
+            image_id = str(request.POST['data'])
+
+            if image_id in self.images.keys():
+                return self.images[image_id]
+
+        return ''
 
     def _post_result(self, request):
         return str(request.POST['data'])
@@ -333,4 +342,3 @@ class ChemicalElementCheckboxesModule(CheckboxesModule):
     def _post_result(self, request):
         if 'data[]' in request.POST:
             return str(request.POST['data[]'])
-    
